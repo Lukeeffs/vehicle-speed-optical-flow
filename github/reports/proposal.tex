@@ -1,0 +1,43 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=0.9in]{geometry}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black}
+\usepackage{microtype}
+
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+
+\title{\vspace{-1.5em}\textbf{CS229 Project Proposal: Vehicle Speed Estimation with Optical Flow and Linear Regression}\vspace{-0.5em}}
+\author{
+  \textbf{Project Category:} Computer Vision (Application \& Feature-Engineering Project)\\
+  Repository: \url{https://github.com/Lukeeffs/vehicle-speed-optical-flow}
+}
+\date{\vspace{-1.2em}}
+
+\begin{document}
+\maketitle
+
+\section*{1. Motivation}
+Reliable ego-vehicle longitudinal speed estimation is critical for autonomous navigation, adaptive cruise control, and forward collision warning when wheel odometry suffers from tire slip or GPS signals drop out in urban canyons. This is an \textbf{application project} combining computer vision and physics-informed feature engineering. Rather than training parameter-heavy 3D Convolutional Neural Networks that demand GPU hardware and exhibit opaque failure modes under illumination shift, we formulate monocular speed estimation as an interpretable, real-time CPU regression problem mapping consecutive $20\text{ Hz}$ dashcam frames $(I_{t-1}, I_t) \in \mathbb{R}^{H \times W \times 3}$ to instantaneous vehicle velocity $\hat{v}_t \in \mathbb{R}_{\ge 0}$ ($\text{m/s}$).
+
+\section*{2. Method}
+Under a pinhole camera mounted at height $H_c$ with focal length $f$ and horizon row $y_0$, longitudinal road optical flow scales quadratically below the horizon as $\dot{y} = \frac{(y - y_0)^2}{f H_c} v_t + f\omega_{\text{pitch}}(t)$. Exploiting this geometry, our pipeline integrates:
+\begin{enumerate}
+  \item \textbf{Photometric \& Perspective Preprocessing:} Grayscale conversion, Contrast-Limited Adaptive Histogram Equalization (CLAHE) to attenuate shadow boundaries, Gaussian smoothing ($\sigma = 1.2$), and trapezoidal Region-of-Interest (ROI) masking removing sky drift ($y < 0.38H$) and static car-hood glare ($y > 0.86H$).
+  \item \textbf{Dual Optical Flow Extraction:} Dense Gunnar Farneb\"{a}ck polynomial expansion flow (Farneb\"{a}ck, 2003) and Sparse Pyramidal Lucas-Kanade tracking (Lucas \& Kanade, 1981) over Shi-Tomasi corners filtered via forward-backward consistency.
+  \item \textbf{Physics-Informed Features \& CS229 Models:} We mask the noisy Focus-of-Expansion (FOE) singularity, project vectors onto radial axes, normalize vertical flow via inverse-perspective scaling, and partition the road into a $3 \times 3$ grid with causal rolling kinematic lags. To address inter-zone multicollinearity, we compare Ordinary Least Squares (OLS) baselines against $\ell_2$ Ridge, $\ell_1$ Lasso, RBF Support Vector Regression (SVR), and Random Forests, coupled with a 1D Constant-Acceleration Kalman Filter. We also apply CS229 classification and unsupervised methods (Logistic/Softmax Regression, $K$-Means, and Gaussian Mixture Models via EM) to analyze discrete driving regimes.
+\end{enumerate}
+
+\section*{3. Intended Experiments \& Evaluation}
+Following the comma.ai Speed Challenge benchmark ($640 \times 480$, $20\text{ fps}$), we enforce a strict contiguous chronological split ($70\%$ Train, $15\%$ Validation, $15\%$ Test with a $5$-frame embargo) and empirically quantify temporal data leakage against random $5$-fold cross-validation. We evaluate models using Test $\text{MSE}$ ($\text{m}^2/\text{s}^2$), $\text{RMSE}$, $\text{MAE}$, and $R^2$, supported by a 9-stage feature/filter ablation study and stratified error slicing across driving speeds, shadows/glare, and camera pitch jitter.
+
+\section*{References}
+\small
+1. comma.ai Speed Challenge Benchmark (2017). \quad 2. G. Farneb\"{a}ck, \emph{SCIA}, 2003. \quad 3. B. Lucas \& T. Kanade, \emph{IJCAI}, 1981.
+
+\end{document}

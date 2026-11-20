@@ -1,0 +1,86 @@
+project:
+  name: "vehicle-speed-optical-flow"
+  seed: 42
+  fps: 20.0
+
+data:
+  video_path: "data/train.mp4"
+  labels_path: "data/train.txt"
+  frame_width: 640
+  frame_height: 480
+  num_synthetic_frames: 1200
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+
+preprocessing:
+  gaussian_kernel_size: [5, 5]
+  gaussian_sigma: 1.2
+  clahe_clip_limit: 2.0
+  clahe_grid_size: [8, 8]
+  # Perspective ROI fractions of (height, width) masking sky (<0.38H) and car hood (>0.86H)
+  roi_y_min_frac: 0.38
+  roi_y_max_frac: 0.86
+  roi_x_min_frac: 0.05
+  roi_x_max_frac: 0.95
+  # Trapezoidal polygon mask vertices in normalized coordinates (x, y)
+  trapezoid_vertices:
+    top_left: [0.32, 0.38]
+    top_right: [0.68, 0.38]
+    bottom_right: [0.95, 0.86]
+    bottom_left: [0.05, 0.86]
+
+optical_flow:
+  farneback:
+    pyr_scale: 0.5
+    levels: 3
+    winsize: 15
+    iterations: 3
+    poly_n: 5
+    poly_sigma: 1.2
+    flags: 0
+  lucas_kanade:
+    max_corners: 200
+    quality_level: 0.01
+    min_distance: 7
+    block_size: 7
+    win_size: [15, 15]
+    max_level: 2
+
+feature_engineering:
+  grid_rows: 3
+  grid_cols: 3
+  # Focus of Expansion (FOE) normalized coordinates in full frame
+  foe_x_frac: 0.50
+  foe_y_frac: 0.38
+  foe_exclusion_radius_px: 28.0
+  magnitude_clip_min: 0.15
+  magnitude_clip_max: 65.0
+  percentiles: [25, 50, 75, 90]
+  temporal_lags: [1, 2, 3]
+  rolling_windows: [3, 5]
+
+models:
+  ridge:
+    alphas: [0.1, 1.0, 10.0, 50.0, 100.0, 250.0, 500.0]
+  lasso:
+    alphas: [0.005, 0.01, 0.05, 0.1, 0.5, 1.0]
+    max_iter: 50000
+  svr:
+    C: 10.0
+    epsilon: 0.2
+    gamma: "scale"
+  random_forest:
+    n_estimators: 200
+    max_depth: 10
+    min_samples_leaf: 4
+
+temporal_filter:
+  moving_average:
+    window_size: 3
+    ema_alpha: 0.58
+  kalman:
+    dt: 0.05
+    process_noise_pos: 0.12
+    process_noise_vel: 4.50
+    measurement_noise: 0.55
